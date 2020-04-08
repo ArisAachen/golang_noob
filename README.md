@@ -444,6 +444,34 @@ func main(){
 接口优点:
 解耦     将空接口传递作为泛型
 
+###空接口  作为泛型
+空接口有两个字段，一个是实例类型，另一个是指向绑定实例的指针
+两个都为nil  空接口才为nil
+type nil_interface interface{
+    Normal_nil()
+    Pointer_nil()
+}
+type nil_implement struct{
+}
+func (nil_inter nil_implement)Normal_nil(){
+    println("normal_func")
+}
+func (nil_inter *nilimplement)Pointer_nil(){
+    println("pointer_func")
+}
+func main(){
+    var nil_imp *nil_implement = nil
+    var nil_inter nil_interface = nil_imp
+
+    println("%p",nil_inter) //地址为0x0
+
+    if nil_inter == nil  //值为false  nil_inter != nil
+
+    nil_inter.Normal_nil() //Error 实例为nil
+
+    nil_inter.Pointer_nil() //输出pointer_nil
+}
+
 
 #goroutine 和chan
 go不推荐使用内存进行线程通信，使用chan类似于管道
@@ -474,6 +502,8 @@ func main(){
 func main(){
     c := make(chan struct{})
     
+    defer close(c)
+
     gon func(i chan struct {}){
 
         println("chan on")
@@ -484,4 +514,91 @@ func main(){
 
     //读通道c
     get_c := <-c
+}
+通道使用后要关闭
+
+###WaitGroup
+main goroutine调用Add 设置需要等待goroutine的数目，完成goroutine调用Done()
+Wait()等待所以goroutine结束
+
+var wg sync.WaitGroup
+func main(){
+
+    for i:=0;i<10;i++{
+        wg.Add(1)
+        go wait_group_test()
+    }
+
+    wg.Wait()
+}
+
+func wait_group_test(){
+    println("wait group test")
+
+    defer wg.Done()
+}
+
+
+###select
+类似于unix多路复用   select一直循环
+
+func main(){
+    chanSelect := make(chan int)
+
+	go selectTest(chanSelect)
+
+	for i := 0; i < 10; i++ {
+		println("select num = ", <-chanSelect)
+	}
+}
+
+func selectTest(chanInt chan int) {
+
+	for {
+		select {
+		case chanInt <- 0:
+
+			println("chanInt <- 0")
+		case chanInt <- 1:
+			println("chanInt <- 1")
+
+		}
+	}
+}
+
+##通知退出机制
+关闭select监听的通道，使得select立马感知到关闭
+func main(){
+    	//退出机制
+	chanOut := make(chan int)
+	chanRand := selectClose(chanOut)
+
+	println(<-chanRand)
+
+	close(chanOut)
+
+	println(<-chanRand)
+}
+
+func selectClose(chanInt chan int) chan int {
+
+	ch := make(chan int)
+
+	go func() {
+
+	Label:
+		for {
+
+			select {
+			case ch <- rand.Int():
+				println("selectClose random")
+			case <-chanInt:
+				println("selectClose breakout")
+				close(ch)
+				break Label
+			}
+
+		}
+	}()
+	return ch
 }
